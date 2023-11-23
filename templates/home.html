@@ -1,5 +1,3 @@
-<!-- templates/home.html -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,7 +14,9 @@
 
     <section class="features">
         {{ if not .Posts }}
-            <p>No Posts</p>
+            <article class="post">
+                <p class="post-body">No Posts</p>
+            </article>
         {{ else }}
             {{ range .Posts }}
             <article class="post">
