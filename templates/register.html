@@ -1,12 +1,53 @@
+<!-- templates/register.html -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
+    <title>Register - Liara Blog</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <h1>Register</h1>
-    <!-- Add registration form here -->
+    <header>
+        <h1>Liara Blog</h1>
+        <p>A blog for good experience of deploying</p>
+        <nav>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/add-post">Add Post</a></li>
+                <li><a href="/about">About Us</a></li>
+                <li><a href="/login">Login</a></li>
+            </ul>
+        </nav>
+    </header>
+    <br>
+    <br>
+
+    <section class="add-post">
+        <h2>Register</h2>
+        <form action="/register" method="post">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" autocomplete="off" required>
+
+            <label for="name">Name:</label>
+            <input type="text" id="name" name="name" autocomplete="off" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <label for="confirm-password">Confirm Password:</label>
+            <input type="password" id="confirm-password" name="confirm-password" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" autocomplete="off" required>
+
+            <input type="submit" value="Register">
+        </form>
+    </section>
+
+    <footer>
+        <p>&copy; 2023 Liara Blog. All rights reserved.</p>
+    </footer>
 </body>
 </html>

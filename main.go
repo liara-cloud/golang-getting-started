@@ -70,6 +70,7 @@ func main() {
     r.HandleFunc("/register", registerHandler).Methods("GET")
     r.HandleFunc("/add-post", addPostPageHandler).Methods("GET")
     r.HandleFunc("/add-post", addPostHandler).Methods("POST")
+    r.HandleFunc("/about", aboutHandler).Methods("GET")
 
     r.HandleFunc("/save-post", savePostHandler).Methods("POST")
     
@@ -110,6 +111,10 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
     renderTemplate(w, "login", nil)
+}
+
+func aboutHandler(w http.ResponseWriter, r *http.Request) {
+    renderTemplate(w, "about", nil)
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {

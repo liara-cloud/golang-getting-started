@@ -109,6 +109,8 @@ header {
 }
 
 .add-post input[type="text"],
+.add-post input[type="email"],
+.add-post input[type="password"],
 .add-post textarea,
 .file-input {
     width: 100%;
@@ -144,5 +146,23 @@ footer {
     position: fixed;
     bottom: 0;
     width: 100%;
+}
+
+nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+}
+
+nav li {
+    margin: 0 10px;
+}
+
+nav a {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
 }
 
