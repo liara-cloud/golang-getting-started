@@ -66,14 +66,15 @@ func main() {
     
     // Routes
     r.HandleFunc("/", homeHandler).Methods("GET")
+    r.HandleFunc("/dashboard", dashboardHandler).Methods("GET")
     r.HandleFunc("/login", loginHandler).Methods("GET")
     r.HandleFunc("/register", registerHandler).Methods("GET")
+    r.HandleFunc("/register", registerHandler).Methods("POST")
     r.HandleFunc("/add-post", addPostPageHandler).Methods("GET")
     r.HandleFunc("/add-post", addPostHandler).Methods("POST")
     r.HandleFunc("/about", aboutHandler).Methods("GET")
+    r.HandleFunc("/about", logoutHandler).Methods("POST")
 
-    r.HandleFunc("/save-post", savePostHandler).Methods("POST")
-    
     // Serve static files from the "static" directory
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
@@ -108,6 +109,19 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
     tmpl.Execute(w, struct{ Posts []Post }{Posts: posts})
 }
 
+func dashboardHandler(w http.ResponseWriter, r *http.Request) {
+    var posts []Post
+    db.Find(&posts)
+
+    tmpl, err := template.ParseFiles("templates/dashboard.html")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    tmpl.Execute(w, struct{ Posts []Post }{Posts: posts})
+}
+
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
     renderTemplate(w, "login", nil)
@@ -118,6 +132,20 @@ func aboutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method == http.MethodPost {
+        name := r.FormValue("name")
+        username := r.FormValue("username")
+        password := r.FormValue("password")
+        email := r.FormValue("email")
+
+        newUser := User{Name: name, Username: username, Password: password, Email: email}
+        db.Create(&newUser)
+
+        http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+        return
+    }
+
+    // درخواست از نوع GET
     renderTemplate(w, "register", nil)
 }
 
@@ -163,8 +191,8 @@ func addPostPageHandler(w http.ResponseWriter, r *http.Request) {
     tmpl.Execute(w, nil)
 }
 
-func savePostHandler(w http.ResponseWriter, r *http.Request) {
-    // Implement saving post logic here
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+    http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func load_dot_env() {
