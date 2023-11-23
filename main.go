@@ -11,7 +11,7 @@ import (
     "gorm.io/driver/mysql"
     "gorm.io/gorm"
     "github.com/joho/godotenv"
-    
+    "github.com/google/uuid"
 )
 
 
@@ -130,7 +130,8 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
     defer file.Close()
 
     // ذخیره فایل آپلود شده در محل مورد نظر
-    imagePath := "static/images/" + handler.Filename
+
+    imagePath := "static/images/" + uuid.New().String() + handler.Filename
     f, err := os.Create(imagePath)
     if err != nil {
         http.Error(w, "Error saving file", http.StatusInternalServerError)

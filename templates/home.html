@@ -15,14 +15,17 @@
     </header>
 
     <section class="features">
-        {{ range .Posts }}
-        <article class="post">
-            <h2>{{ .Title }}</h2>
-            <p class="post-meta">Created at {{ .CreatedAt.Format "2006-01-02 15:04:05" }}</p>
-            <p class="post-body">{{ .Body }}</p>
-            <!-- افزودن تگ ایمیج -->
-            <img src="{{ .ImagePath }}" alt="Post Image" class="post-image">
-        </article>
+        {{ if not .Posts }}
+            <p>No Posts</p>
+        {{ else }}
+            {{ range .Posts }}
+            <article class="post">
+                <h2>{{ .Title }}</h2>
+                <p class="post-meta">Created at {{ .CreatedAt.Format "2006-01-02 15:04:05" }}</p>
+                <p class="post-body">{{ .Body }}</p>
+                <img src="{{ .ImagePath }}" alt="Post Image" class="post-image">
+            </article>
+            {{ end }}
         {{ end }}
     </section>
 
