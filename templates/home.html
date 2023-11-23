@@ -1,0 +1,33 @@
+<!-- templates/home.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liara Blog</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Liara Blog</h1>
+        <p>A blog for good experience of deploying</p>
+    </header>
+
+    <section class="features">
+        {{ range .Posts }}
+        <article class="post">
+            <h2>{{ .Title }}</h2>
+            <p class="post-meta">Created at {{ .CreatedAt.Format "2006-01-02 15:04:05" }}</p>
+            <p class="post-body">{{ .Body }}</p>
+            <!-- افزودن تگ ایمیج -->
+            <img src="{{ .ImagePath }}" alt="Post Image" class="post-image">
+        </article>
+        {{ end }}
+    </section>
+
+    <footer>
+        <p>&copy; 2023 Liara Blog. All rights reserved.</p>
+    </footer>
+</body>
+</html>
