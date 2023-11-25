@@ -9,13 +9,13 @@ import (
     "strconv"
 
     "context"
-	"log"
+	// "log"
     
     "github.com/gorilla/mux"
     "gorm.io/driver/mysql"
     "gorm.io/gorm"
     "github.com/joho/godotenv"
-    "github.com/google/uuid"
+    // "github.com/google/uuid"
     "github.com/gorilla/sessions"
     "github.com/go-gomail/gomail"
 
@@ -202,20 +202,18 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
     }
     defer file.Close()
 
-    imagePath := "static/images/" + uuid.New().String() + handler.Filename
-    f, err := os.Create(imagePath)
+    // Use the S3 client to upload the file
+    err = upload_using_s3(file, handler.Filename)
     if err != nil {
-        http.Error(w, "Error saving file", http.StatusInternalServerError)
+        http.Error(w, "Error uploading file to S3", http.StatusInternalServerError)
         return
     }
-    defer f.Close()
-    io.Copy(f, file)
 
-    // افزودن پست به دیتابیس با اطلاعات آپلود شده
-    post := Post{Title: title, Body: body, ImagePath: imagePath}
+    // Add post to the database with the S3 object URL
+    post := Post{Title: title, Body: body, ImagePath: getS3ObjectURL(handler.Filename)}
     db.Create(&post)
 
-    // بازگشت به صفحه home
+    // Redirect to the dashboard
     http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
@@ -282,53 +280,48 @@ func sendWelcomeEmail(email, name string) {
 	}
 }
 
-func upload_using_s3() {
-    
+func upload_using_s3(fileContent io.Reader, fileName string) error {
     // Load the Shared AWS Configuration (~/.aws/config)
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
+    cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
+    if err != nil {
+        return err
+    }
 
-	if err != nil {
-		log.Fatal(err)
-	}
+    // Define AWS credentials and bucket information
+    awsAccessKeyID := "krrlbgaqgrfpnliv"
+    awsSecretAccessKey := "189738a6-8544-4d8f-9670-def0902ba3f5"
+    bucketName := "dadazakbari"
+    endpoint := "https://storage.iran.liara.space"
 
-	// Define AWS credentials and bucket information
-	awsAccessKeyID := "krrlbgaqgrfpnliv"
-	awsSecretAccessKey := "189738a6-8544-4d8f-9670-def0902ba3f5"
-	bucketName := "dadazakbari"
-	endpoint := "https://storage.iran.liara.space"
+    // Initialize S3 client with custom configuration
+    cfg.Credentials = aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+        return aws.Credentials{
+            AccessKeyID:     awsAccessKeyID,
+            SecretAccessKey: awsSecretAccessKey,
+        }, nil
+    })
 
-	// Initialize S3 client with custom configuration
-	cfg.Credentials = aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
-		return aws.Credentials{
-			AccessKeyID:     awsAccessKeyID,
-			SecretAccessKey: awsSecretAccessKey,
-		}, nil
-	})
+    cfg.BaseEndpoint = aws.String(endpoint)
 
-	cfg.BaseEndpoint = aws.String(endpoint)
+    client := s3.NewFromConfig(cfg)
 
-	client := s3.NewFromConfig(cfg)
+    // Specify the destination key in the bucket
+    destinationKey := "uploads/" + fileName
 
-	// Specify the file to upload and the destination key in the bucket
-	filePath := "file.txt"
-	destinationKey := "uploads/file.txt"
+    // Use the S3 client to upload the file
+    _, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
+        Bucket: aws.String(bucketName),
+        Key:    aws.String(destinationKey),
+        Body:   fileContent,
+    })
 
-	// Open the file to upload
-	file, err := os.Open(filePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+    return err
+}
 
-	// Use the S3 client to upload the file
-	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: aws.String(bucketName),
-		Key:    aws.String(destinationKey),
-		Body:   file,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+func getS3ObjectURL(fileName string) string {
+    // Define AWS credentials and bucket information
+    bucketName := "dadazakbari"
+    endpoint := "https://storage.iran.liara.space"
 
-	fmt.Println("File uploaded successfully!")
+    return fmt.Sprintf("%s/%s/%s", endpoint, bucketName, "uploads/"+fileName)
 }
