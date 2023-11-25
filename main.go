@@ -14,7 +14,6 @@ import (
     "github.com/google/uuid"
 )
 
-
 var (
     templates *template.Template
     db  *gorm.DB
@@ -35,7 +34,6 @@ type Post struct {
     Body      string `gorm:"not null"`
     ImagePath string
 }
-
 
 func init() {
     load_dot_env()
@@ -68,6 +66,7 @@ func main() {
     r.HandleFunc("/", homeHandler).Methods("GET")
     r.HandleFunc("/dashboard", dashboardHandler).Methods("GET")
     r.HandleFunc("/login", loginHandler).Methods("GET")
+    r.HandleFunc("/login", loginHandler).Methods("POST")
     r.HandleFunc("/register", registerHandler).Methods("GET")
     r.HandleFunc("/register", registerHandler).Methods("POST")
     r.HandleFunc("/add-post", addPostPageHandler).Methods("GET")
@@ -123,7 +122,6 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
     tmpl.Execute(w, struct{ Posts []Post }{Posts: posts})
 }
 
-
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
     renderTemplate(w, "about", nil)
 }
@@ -146,7 +144,6 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
     
-    // درخواست از نوع GET
     renderTemplate(w, "register", nil)
 }
 
@@ -157,7 +154,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
         var user User
         result := db.Where("username = ? AND password = ?", username, password).First(&user)
-        
         if result.Error == nil {
             http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
             return
@@ -165,8 +161,6 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
     }
     renderTemplate(w, "login", map[string]interface{}{"Error": "Invalid username or password"})
 }
-
-
 
 func addPostHandler(w http.ResponseWriter, r *http.Request) {
     title := r.FormValue("title")
