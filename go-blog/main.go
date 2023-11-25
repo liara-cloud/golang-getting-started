@@ -187,7 +187,6 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
     title := r.FormValue("title")
     body := r.FormValue("body")
 
-    // دریافت فایل آپلود شده
     file, handler, err := r.FormFile("image")
     if err != nil {
         fmt.Println("Error Retrieving the File")
@@ -195,8 +194,6 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
     defer file.Close()
-
-    // ذخیره فایل آپلود شده در محل مورد نظر
 
     imagePath := "static/images/" + uuid.New().String() + handler.Filename
     f, err := os.Create(imagePath)
