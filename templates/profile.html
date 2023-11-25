@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liara Blog</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Liara Blog</h1>
+        <p>A blog for good experience of deploying</p>
+        <nav>
+            <ul>
+                <li><a href="/dashboard">Home</a></li>
+                <li><a href="/profile">Profile</a></li>
+                <li><a href="/add-post">Add Post</a></li>
+                <li><a href="/logout">LogOut</a></li>
+            </ul>
+        </nav>
+    </header>
+    <br>
+    <br>
+
+    <section class="add-post">
+        <h2>User Profile</h2>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" value={{.Username}} disabled>
+        <label for="username">Name:</label>
+        <input type="text" id="name" name="name" value={{.Name}} disabled>
+        <label for="username">Email:</label>
+        <input type="text" id="email" name="email" value={{.Email}} disabled>
+
+
+    </section>
+
+    <footer>
+        <p>&copy; 2023 Liara Blog. All rights reserved.</p>
+    </footer>
+</body>
+</html>

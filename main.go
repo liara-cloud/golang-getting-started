@@ -12,6 +12,7 @@ import (
     "gorm.io/gorm"
     "github.com/joho/godotenv"
     "github.com/google/uuid"
+    "github.com/gorilla/sessions"
 )
 
 var (
@@ -65,15 +66,15 @@ func main() {
     // Routes
     r.HandleFunc("/", homeHandler).Methods("GET")
     r.HandleFunc("/dashboard", dashboardHandler).Methods("GET")
-    r.HandleFunc("/login", loginHandler).Methods("GET")
-    r.HandleFunc("/login", loginHandler).Methods("POST")
-    r.HandleFunc("/register", registerHandler).Methods("GET")
-    r.HandleFunc("/register", registerHandler).Methods("POST")
+    r.HandleFunc("/login", loginHandler).Methods("GET", "POST")
+    r.HandleFunc("/register", registerHandler).Methods("GET", "POST")
     r.HandleFunc("/add-post", addPostPageHandler).Methods("GET")
     r.HandleFunc("/add-post", addPostHandler).Methods("POST")
     r.HandleFunc("/about", aboutHandler).Methods("GET")
     r.HandleFunc("/logout", logoutHandler).Methods("GET")
     r.HandleFunc("/privacy", privacyHandler).Methods("GET")
+    r.HandleFunc("/profile", profileHandler).Methods("GET")
+
 
     // Serve static files from the "static" directory
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -147,6 +148,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
     renderTemplate(w, "register", nil)
 }
 
+var store = sessions.NewCookieStore([]byte("your-secret-key"))
 func loginHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method == http.MethodPost {
         username := r.FormValue("username")
@@ -155,6 +157,20 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         var user User
         result := db.Where("username = ? AND password = ?", username, password).First(&user)
         if result.Error == nil {
+            session, err := store.Get(r, "user-session")
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            session.Values["username"] = user.Username
+            session.Values["name"] = user.Name
+            session.Values["email"] = user.Email
+            err = session.Save(r, w)
+            if err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+
             http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
             return
         }
@@ -206,6 +222,31 @@ func addPostPageHandler(w http.ResponseWriter, r *http.Request) {
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
     http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+func profileHandler(w http.ResponseWriter, r *http.Request) {
+    // دریافت اطلاعات کاربر از جلسه
+    session, err := store.Get(r, "user-session")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // چک کردن وجود اطلاعات کاربر در جلسه
+    username, ok := session.Values["username"].(string)
+    if !ok {
+        http.Error(w, "User not logged in", http.StatusUnauthorized)
+        return
+    }
+
+    var user User
+    result := db.Where("username = ?", username).First(&user)
+    if result.Error != nil {
+        http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    renderTemplate(w, "profile", user)
 }
 
 func load_dot_env() {
