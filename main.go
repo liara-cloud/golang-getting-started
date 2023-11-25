@@ -6,6 +6,7 @@ import (
     "net/http"
     "os"
     "io"
+    "strconv"
     
     "github.com/gorilla/mux"
     "gorm.io/driver/mysql"
@@ -13,6 +14,7 @@ import (
     "github.com/joho/godotenv"
     "github.com/google/uuid"
     "github.com/gorilla/sessions"
+    "github.com/go-gomail/gomail"
 )
 
 var (
@@ -132,20 +134,23 @@ func privacyHandler(w http.ResponseWriter, r *http.Request){
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
-    if r.Method == http.MethodPost {
-        name := r.FormValue("name")
-        username := r.FormValue("username")
-        password := r.FormValue("password")
-        email := r.FormValue("email")
-        
-        newUser := User{Name: name, Username: username, Password: password, Email: email}
-        db.Create(&newUser)
-        
-        http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-        return
-    }
-    
-    renderTemplate(w, "register", nil)
+	if r.Method == http.MethodPost {
+		name := r.FormValue("name")
+		username := r.FormValue("username")
+		password := r.FormValue("password")
+		email := r.FormValue("email")
+
+		newUser := User{Name: name, Username: username, Password: password, Email: email}
+
+		db.Create(&newUser)
+
+		sendWelcomeEmail(email, name)
+
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+
+	renderTemplate(w, "register", nil)
 }
 
 var store = sessions.NewCookieStore([]byte("your-secret-key"))
@@ -225,14 +230,11 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func profileHandler(w http.ResponseWriter, r *http.Request) {
-    // دریافت اطلاعات کاربر از جلسه
     session, err := store.Get(r, "user-session")
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
         return
     }
-
-    // چک کردن وجود اطلاعات کاربر در جلسه
     username, ok := session.Values["username"].(string)
     if !ok {
         http.Error(w, "User not logged in", http.StatusUnauthorized)
@@ -254,4 +256,24 @@ func load_dot_env() {
     if err != nil {
         fmt.Println(err)
     }
+}
+
+func sendWelcomeEmail(email, name string) {
+    mailPort, err := strconv.Atoi(os.Getenv("MAIL_PORT"))
+    if err != nil {
+        fmt.Println("Error converting MAIL_PORT to int:", err)
+        return
+    }
+	m := gomail.NewMessage()
+	m.SetHeader("From", os.Getenv("MAIL_FROM")) 
+	m.SetHeader("To", email)
+	m.SetHeader("Subject", "Welcome to Liara Blog")
+	body := fmt.Sprintf("Dear %s,\n\nWelcome to Liara Blog! We're excited to have you on board.", name)
+	m.SetBody("text/plain", body)
+
+    d := gomail.NewDialer(os.Getenv("MAIL_HOST"), mailPort, os.Getenv("MAIL_USERNAME"), os.Getenv("MAIL_PASSWORD"))
+
+	if err := d.DialAndSend(m); err != nil {
+		fmt.Println("Error sending welcome email:", err)
+	}
 }
