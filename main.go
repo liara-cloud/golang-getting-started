@@ -7,6 +7,9 @@ import (
     "os"
     "io"
     "strconv"
+
+    "context"
+	"log"
     
     "github.com/gorilla/mux"
     "gorm.io/driver/mysql"
@@ -15,6 +18,10 @@ import (
     "github.com/google/uuid"
     "github.com/gorilla/sessions"
     "github.com/go-gomail/gomail"
+
+    "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 var (
@@ -273,4 +280,55 @@ func sendWelcomeEmail(email, name string) {
 	if err := d.DialAndSend(m); err != nil {
 		fmt.Println("Error sending welcome email:", err)
 	}
+}
+
+func upload_using_s3() {
+    
+    // Load the Shared AWS Configuration (~/.aws/config)
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Define AWS credentials and bucket information
+	awsAccessKeyID := "krrlbgaqgrfpnliv"
+	awsSecretAccessKey := "189738a6-8544-4d8f-9670-def0902ba3f5"
+	bucketName := "dadazakbari"
+	endpoint := "https://storage.iran.liara.space"
+
+	// Initialize S3 client with custom configuration
+	cfg.Credentials = aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+		return aws.Credentials{
+			AccessKeyID:     awsAccessKeyID,
+			SecretAccessKey: awsSecretAccessKey,
+		}, nil
+	})
+
+	cfg.BaseEndpoint = aws.String(endpoint)
+
+	client := s3.NewFromConfig(cfg)
+
+	// Specify the file to upload and the destination key in the bucket
+	filePath := "file.txt"
+	destinationKey := "uploads/file.txt"
+
+	// Open the file to upload
+	file, err := os.Open(filePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	// Use the S3 client to upload the file
+	_, err = client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(destinationKey),
+		Body:   file,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println("File uploaded successfully!")
 }
