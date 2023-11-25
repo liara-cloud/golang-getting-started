@@ -9,7 +9,7 @@ tmp/
 go.work
 .air.toml
 .env
-go-blog/static/images/
+static/images/
 .DS_Store
 *.[56789ao]
 *.a[56789o]
