@@ -73,7 +73,8 @@ func main() {
     r.HandleFunc("/add-post", addPostPageHandler).Methods("GET")
     r.HandleFunc("/add-post", addPostHandler).Methods("POST")
     r.HandleFunc("/about", aboutHandler).Methods("GET")
-    r.HandleFunc("/about", logoutHandler).Methods("POST")
+    r.HandleFunc("/logout", logoutHandler).Methods("GET")
+    r.HandleFunc("/privacy", privacyHandler).Methods("GET")
 
     // Serve static files from the "static" directory
 	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -123,12 +124,12 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-    renderTemplate(w, "login", nil)
-}
-
 func aboutHandler(w http.ResponseWriter, r *http.Request) {
     renderTemplate(w, "about", nil)
+}
+
+func privacyHandler(w http.ResponseWriter, r *http.Request){
+    renderTemplate(w, "privacy", nil)
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -137,17 +138,35 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
         username := r.FormValue("username")
         password := r.FormValue("password")
         email := r.FormValue("email")
-
+        
         newUser := User{Name: name, Username: username, Password: password, Email: email}
         db.Create(&newUser)
-
+        
         http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
         return
     }
-
+    
     // درخواست از نوع GET
     renderTemplate(w, "register", nil)
 }
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+    if r.Method == http.MethodPost {
+        username := r.FormValue("username")
+        password := r.FormValue("password")
+
+        var user User
+        result := db.Where("username = ? AND password = ?", username, password).First(&user)
+        
+        if result.Error == nil {
+            http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+            return
+        }
+    }
+    renderTemplate(w, "login", map[string]interface{}{"Error": "Invalid username or password"})
+}
+
+
 
 func addPostHandler(w http.ResponseWriter, r *http.Request) {
     title := r.FormValue("title")
@@ -178,7 +197,7 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
     db.Create(&post)
 
     // بازگشت به صفحه home
-    http.Redirect(w, r, "/", http.StatusSeeOther)
+    http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
 func addPostPageHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,45 @@
+<!-- templates/add-post.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Post</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Liara Blog</h1>
+        <p>A blog for good experience of deploying</p>
+        <nav>
+            <ul>
+                <li><a href="/dashboard">Home</a></li>
+                <li><a href="/profile">Profile</a></li>
+                <li><a href="/add-post">Add Post</a></li>
+                <li><a href="/logout">LogOut</a></li>
+            </ul>
+        </nav>
+    </header>
+    <section class="features">
+        {{ if not .Posts }}
+            <article class="post">
+                <p class="post-body">No Posts</p>
+            </article>
+        {{ else }}
+            {{ range .Posts }}
+            <article class="post">
+                <h2>{{ .Title }}</h2>
+                <p class="post-meta">Created at {{ .CreatedAt.Format "2006-01-02 15:04:05" }}</p>
+                <p class="post-body">{{ .Body }}</p>
+                <img src="{{ .ImagePath }}" alt="Post Image" class="post-image">
+            </article>
+            {{ end }}
+        {{ end }}
+    </section>
+
+    <footer>
+        <p>&copy; 2023 Liara Blog. All rights reserved.</p>
+    </footer>
+</body>
+</html>
