@@ -9,13 +9,11 @@ import (
     "strconv"
 
     "context"
-	// "log"
-    
     "github.com/gorilla/mux"
     "gorm.io/driver/mysql"
     "gorm.io/gorm"
     "github.com/joho/godotenv"
-    // "github.com/google/uuid"
+    "github.com/google/uuid"
     "github.com/gorilla/sessions"
     "github.com/go-gomail/gomail"
 
@@ -203,7 +201,7 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
     defer file.Close()
 
     // Use the S3 client to upload the file
-    err = upload_using_s3(file, handler.Filename)
+    err = upload_using_s3(file, uuid.New().String() + handler.Filename)
     if err != nil {
         http.Error(w, "Error uploading file to S3", http.StatusInternalServerError)
         return
@@ -213,6 +211,7 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
     post := Post{Title: title, Body: body, ImagePath: getS3ObjectURL(handler.Filename)}
     db.Create(&post)
 
+    
     // Redirect to the dashboard
     http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
