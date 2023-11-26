@@ -200,18 +200,19 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
     }
     defer file.Close()
 
+    fileName := uuid.New().String() + handler.Filename
     // Use the S3 client to upload the file
-    err = upload_using_s3(file, uuid.New().String() + handler.Filename)
+    err = upload_using_s3(file, fileName)
     if err != nil {
         http.Error(w, "Error uploading file to S3", http.StatusInternalServerError)
         return
     }
 
     // Add post to the database with the S3 object URL
-    post := Post{Title: title, Body: body, ImagePath: getS3ObjectURL(handler.Filename)}
+    post := Post{Title: title, Body: body, ImagePath: getS3ObjectURL(fileName)}
     db.Create(&post)
 
-    
+
     // Redirect to the dashboard
     http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
@@ -281,16 +282,16 @@ func sendWelcomeEmail(email, name string) {
 
 func upload_using_s3(fileContent io.Reader, fileName string) error {
     // Load the Shared AWS Configuration (~/.aws/config)
-    cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("us-west-2"))
+    cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(os.Getenv("AWS_REGION")))
     if err != nil {
         return err
     }
 
     // Define AWS credentials and bucket information
-    awsAccessKeyID := "krrlbgaqgrfpnliv"
-    awsSecretAccessKey := "189738a6-8544-4d8f-9670-def0902ba3f5"
-    bucketName := "dadazakbari"
-    endpoint := "https://storage.iran.liara.space"
+    awsAccessKeyID     := os.Getenv("AWS_ACCESS_KEY")
+    awsSecretAccessKey := os.Getenv("AWS_SECRET_KEY")
+    endpoint           := os.Getenv("AWS_ENDPOINT")
+    bucketName         := os.Getenv("AWS_BUCKET_NAME")
 
     // Initialize S3 client with custom configuration
     cfg.Credentials = aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
@@ -319,8 +320,8 @@ func upload_using_s3(fileContent io.Reader, fileName string) error {
 
 func getS3ObjectURL(fileName string) string {
     // Define AWS credentials and bucket information
-    bucketName := "dadazakbari"
-    endpoint := "https://storage.iran.liara.space"
+    bucketName := os.Getenv("AWS_BUCKET_NAME")
+    endpoint   := os.Getenv("AWS_ENDPOINT")
 
     return fmt.Sprintf("%s/%s/%s", endpoint, bucketName, "uploads/"+fileName)
 }
