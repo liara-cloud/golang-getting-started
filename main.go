@@ -118,6 +118,16 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
+    session, err := store.Get(r, "user-session")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    _, ok := session.Values["username"].(string)
+    if !ok {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
     var posts []Post
     db.Find(&posts)
 
@@ -148,8 +158,22 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		newUser := User{Name: name, Username: username, Password: password, Email: email}
 
 		db.Create(&newUser)
+        sendWelcomeEmail(email, name)
 
-		sendWelcomeEmail(email, name)
+        session, err := store.Get(r, "user-session")
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        session.Values["username"] = newUser.Username
+        session.Values["name"]     = newUser.Name
+        session.Values["email"]    = newUser.Email
+        err = session.Save(r, w)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
 
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
@@ -218,6 +242,16 @@ func addPostHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addPostPageHandler(w http.ResponseWriter, r *http.Request) {
+    session, err := store.Get(r, "user-session")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    _, ok := session.Values["username"].(string)
+    if !ok {
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
+        return
+    }
     tmpl, err := template.ParseFiles("templates/add-post.html")
     if err != nil {
         http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -228,8 +262,23 @@ func addPostPageHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
+    // حذف session از cookie
+    session, err := store.Get(r, "user-session")
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    session.Options.MaxAge = -1 // تنظیم MaxAge به مقدار منفی برای حذف session
+    err = session.Save(r, w)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusInternalServerError)
+        return
+    }
+
+    // Redirect به صفحه اصلی
     http.Redirect(w, r, "/", http.StatusSeeOther)
 }
+
 
 func profileHandler(w http.ResponseWriter, r *http.Request) {
     session, err := store.Get(r, "user-session")
@@ -239,7 +288,7 @@ func profileHandler(w http.ResponseWriter, r *http.Request) {
     }
     username, ok := session.Values["username"].(string)
     if !ok {
-        http.Error(w, "User not logged in", http.StatusUnauthorized)
+        http.Redirect(w, r, "/login", http.StatusSeeOther)
         return
     }
 
