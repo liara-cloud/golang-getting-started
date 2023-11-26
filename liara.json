@@ -1,0 +1,10 @@
+{
+    "app": "go-blog",
+    "port": 8080,
+    "disks": [
+        {
+            "name": "data",
+            "mountTo": "/app/static/images"
+        }
+    ]
+}
