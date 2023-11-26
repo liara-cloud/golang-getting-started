@@ -143,8 +143,22 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 		newUser := User{Name: name, Username: username, Password: password, Email: email}
 
 		db.Create(&newUser)
+        sendWelcomeEmail(email, name)
 
-		sendWelcomeEmail(email, name)
+        session, err := store.Get(r, "user-session")
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        session.Values["username"] = newUser.Username
+        session.Values["name"]     = newUser.Name
+        session.Values["email"]    = newUser.Email
+        err = session.Save(r, w)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
 
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
@@ -274,3 +288,4 @@ func sendWelcomeEmail(email, name string) {
 		fmt.Println("Error sending welcome email:", err)
 	}
 }
+
