@@ -26,3 +26,10 @@ first steps with Golang Projects in Liara
 ```bash
   air
 ```
+## Deploying
+```bash
+  liara login
+```
+```bash
+  liara deploy
+```
