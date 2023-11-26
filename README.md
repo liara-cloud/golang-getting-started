@@ -11,6 +11,9 @@ first steps with Golang Projects in Liara
   cd golang-getting-started
 ```
 ```bash
+  git checkout upload-using-s3
+```
+```bash
   cp .env.example .env
 ```
 - or if you're using windows, just rename .env.example to .env
