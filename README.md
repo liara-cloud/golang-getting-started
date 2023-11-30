@@ -34,4 +34,4 @@ first steps with Golang Projects in Liara
 ```
 
 ## Documentation
-Read more on liara [Golang apps documentation](https://docs.liara.ir/app-deploy/go/getting-started)
+Read more on liara [Golang apps documentation](https://docs.liara.ir/app-deploy/golang/getting-started/)
