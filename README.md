@@ -4,8 +4,9 @@ first steps with Golang Projects in Liara
 ## Availabe Branches
 
 1.  [Disk setup](https://github.com/liara-cloud/golang-getting-started/tree/diskSetup)
-3.  [Object Storage In Liara](https://github.com/liara-cloud/golang-getting-started/tree/upload-using-s3)
-4.  [Dockerized Go For Deploying](https://github.com/liara-cloud/golang-getting-started/tree/go-dockerized)
+2.  [Object Storage In Liara](https://github.com/liara-cloud/golang-getting-started/tree/upload-using-s3)
+3.  [Dockerized Go For Deploying](https://github.com/liara-cloud/golang-getting-started/tree/go-dockerized)
+4.  [Upload File Using S3 In Liara](https://github.com/liara-cloud/golang-getting-started/tree/upload-using-s3)
 
 ## Blog Website For Test
 ## Installation
@@ -29,6 +30,12 @@ first steps with Golang Projects in Liara
   go run main.go
 ```
 - if you need to Live reload, you can use air:
+```bash
+  go install github.com/cosmtrek/air@latest
+```
+```bash
+  air init
+```
 ```bash
   air
 ```
