@@ -7,7 +7,7 @@ first steps with Golang Projects in Liara
 2.  [Object Storage In Liara](https://github.com/liara-cloud/golang-getting-started/tree/upload-using-s3)
 3.  [Dockerized Go-Blog For Deploying](https://github.com/liara-cloud/golang-getting-started/tree/go-dockerized)
 4.  [Upload File Using S3 In Liara](https://github.com/liara-cloud/golang-getting-started/tree/upload-using-s3)
-5.  [Go-Blog] (https://github.com/liara-cloud/golang-getting-started/tree/blog)
+5.  [Go-Blog](https://github.com/liara-cloud/golang-getting-started/tree/blog)
 
 ## Golang app For Test
 ## Installation
