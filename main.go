@@ -1,326 +1,355 @@
 package main
 
 import (
-    "fmt"
-    "html/template"
-    "net/http"
-    "os"
-    "io"
-    "strconv"
-    
-    "github.com/gorilla/mux"
-    "gorm.io/driver/mysql"
-    "gorm.io/gorm"
-    "github.com/joho/godotenv"
-    "github.com/google/uuid"
-    "github.com/gorilla/sessions"
-    "github.com/go-gomail/gomail"
+	"embed"
+	"fmt"
+	"html/template"
+	"net/http"
 )
 
-var (
-    templates *template.Template
-    db  *gorm.DB
-    err error
-)
-
-type User struct {
-    gorm.Model
-    Name     string `gorm:"not null"`
-    Username string `gorm:"unique;not null"`
-    Password string `gorm:"not null"`
-    Email    string `gorm:"unique;not null"`
-}
-
-type Post struct {
-    gorm.Model
-    Title     string `gorm:"not null"`
-    Body      string `gorm:"not null"`
-    ImagePath string
-}
-
-func init() {
-    load_dot_env()
-    templates = template.Must(template.ParseGlob("templates/*.html"))
-    
-    // connect to db
-    dsn := fmt.Sprintf(
-        "%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-        os.Getenv("DB_USERNAME"),
-        os.Getenv("DB_PASSWORD"),
-        os.Getenv("DB_HOST"),
-        os.Getenv("DB_PORT"),
-        os.Getenv("DB_NAME"),
-    )
-    
-    db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
-    if err != nil {
-        fmt.Println(err)
-        panic("Failed to connect to the database")
-    }
-
-    // creating tables
-    db.AutoMigrate(&User{}, &Post{})
-}
+//go:embed assets/*
+var content embed.FS
 
 func main() {
-    r := mux.NewRouter()
-    
-    // Routes
-    r.HandleFunc("/", homeHandler).Methods("GET")
-    r.HandleFunc("/dashboard", dashboardHandler).Methods("GET")
-    r.HandleFunc("/login", loginHandler).Methods("GET", "POST")
-    r.HandleFunc("/register", registerHandler).Methods("GET", "POST")
-    r.HandleFunc("/add-post", addPostPageHandler).Methods("GET")
-    r.HandleFunc("/add-post", addPostHandler).Methods("POST")
-    r.HandleFunc("/about", aboutHandler).Methods("GET")
-    r.HandleFunc("/logout", logoutHandler).Methods("GET")
-    r.HandleFunc("/privacy", privacyHandler).Methods("GET")
-    r.HandleFunc("/profile", profileHandler).Methods("GET")
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := template.New("index").Parse(indexHTML)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 
+		err = tmpl.Execute(w, nil)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+	})
 
-    // Serve static files from the "static" directory
-	r.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+	// Serve static assets
+	http.Handle("/assets/", http.FileServer(http.FS(content)))
 
-	r.HandleFunc("/", homeHandler)
-
-	http.Handle("/", r)
-
-	fmt.Println("Server is running on :8080...")
+	fmt.Println("Server is running on http://localhost:8080")
 	http.ListenAndServe(":8080", nil)
-
-    http.Handle("/", r)
 }
 
-func renderTemplate(w http.ResponseWriter, tmpl string, data interface{}) {
-    err := templates.ExecuteTemplate(w, tmpl+".html", data)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-}
+const indexHTML = `
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deployed on Liara</title>
 
-func homeHandler(w http.ResponseWriter, r *http.Request) {
-    var posts []Post
-    db.Find(&posts)
-
-    tmpl, err := template.ParseFiles("templates/home.html")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+  <style>
+    @font-face {
+      font-family: BeautifulPeople;
+      src: url('assets/BeautifulPeople.ttf');
     }
 
-    tmpl.Execute(w, struct{ Posts []Post }{Posts: posts})
-}
-
-func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-    session, err := store.Get(r, "user-session")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    _, ok := session.Values["username"].(string)
-    if !ok {
-        http.Redirect(w, r, "/login", http.StatusSeeOther)
-        return
-    }
-    var posts []Post
-    db.Find(&posts)
-
-    tmpl, err := template.ParseFiles("templates/dashboard.html")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+    body {
+      background-color: #2B333F;
+      margin: 0;
+      overflow: hidden;
+      font-family: BeautifulPeople;
     }
 
-    tmpl.Execute(w, struct{ Posts []Post }{Posts: posts})
-}
-
-func aboutHandler(w http.ResponseWriter, r *http.Request) {
-    renderTemplate(w, "about", nil)
-}
-
-func privacyHandler(w http.ResponseWriter, r *http.Request){
-    renderTemplate(w, "privacy", nil)
-}
-
-func registerHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		name := r.FormValue("name")
-		username := r.FormValue("username")
-		password := r.FormValue("password")
-		email := r.FormValue("email")
-
-		newUser := User{Name: name, Username: username, Password: password, Email: email}
-
-		db.Create(&newUser)
-        sendWelcomeEmail(email, name)
-
-        session, err := store.Get(r, "user-session")
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-
-        session.Values["username"] = newUser.Username
-        session.Values["name"]     = newUser.Name
-        session.Values["email"]    = newUser.Email
-        err = session.Save(r, w)
-        if err != nil {
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-
-		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-		return
-	}
-
-	renderTemplate(w, "register", nil)
-}
-
-var store = sessions.NewCookieStore([]byte("your-secret-key"))
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-    if r.Method == http.MethodPost {
-        username := r.FormValue("username")
-        password := r.FormValue("password")
-
-        var user User
-        result := db.Where("username = ? AND password = ?", username, password).First(&user)
-        if result.Error == nil {
-            session, err := store.Get(r, "user-session")
-            if err != nil {
-                http.Error(w, err.Error(), http.StatusInternalServerError)
-                return
-            }
-            session.Values["username"] = user.Username
-            session.Values["name"] = user.Name
-            session.Values["email"] = user.Email
-            err = session.Save(r, w)
-            if err != nil {
-                http.Error(w, err.Error(), http.StatusInternalServerError)
-                return
-            }
-
-            http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-            return
-        }
-    }
-    renderTemplate(w, "login", map[string]interface{}{"Error": "Invalid username or password"})
-}
-
-func addPostHandler(w http.ResponseWriter, r *http.Request) {
-    title := r.FormValue("title")
-    body := r.FormValue("body")
-
-    file, handler, err := r.FormFile("image")
-    if err != nil {
-        fmt.Println("Error Retrieving the File")
-        fmt.Println(err)
-        return
-    }
-    defer file.Close()
-
-    imagePath := "static/images/" + uuid.New().String() + handler.Filename
-    f, err := os.Create(imagePath)
-    if err != nil {
-        http.Error(w, "Error saving file", http.StatusInternalServerError)
-        return
-    }
-    defer f.Close()
-    io.Copy(f, file)
-
-    // افزودن پست به دیتابیس با اطلاعات آپلود شده
-    post := Post{Title: title, Body: body, ImagePath: imagePath}
-    db.Create(&post)
-
-    // بازگشت به صفحه home
-    http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
-}
-
-func addPostPageHandler(w http.ResponseWriter, r *http.Request) {
-    session, err := store.Get(r, "user-session")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    _, ok := session.Values["username"].(string)
-    if !ok {
-        http.Redirect(w, r, "/login", http.StatusSeeOther)
-        return
-    }
-    tmpl, err := template.ParseFiles("templates/add-post.html")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+    h1 {
+      text-align: center;
+      color: white;
+      margin-top: 250px;
     }
 
-    tmpl.Execute(w, nil)
-}
-
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
-    // حذف session از cookie
-    session, err := store.Get(r, "user-session")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+    #drawing_canvas {
+      position: absolute;
+      margin: auto;
+      width: 512px;
+      height: 350px;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
     }
-    session.Options.MaxAge = -1 // تنظیم MaxAge به مقدار منفی برای حذف session
-    err = session.Save(r, w)
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
+  </style>
+</head>
+<body>
+  <h1>
+    Hooray!
+  </h1>
+
+  <canvas id="drawing_canvas"></canvas>
+
+  <script>
+    const TWO_PI = Math.PI * 2;
+    const HALF_PI = Math.PI * 0.5;
+
+    // canvas settings
+    var viewWidth = 512,
+      viewHeight = 350,
+      drawingCanvas = document.getElementById("drawing_canvas"),
+      ctx,
+      timeStep = (1 / 60);
+
+    Point = function (x, y) {
+      this.x = x || 0;
+      this.y = y || 0;
+    };
+
+    Particle = function (p0, p1, p2, p3) {
+      this.p0 = p0;
+      this.p1 = p1;
+      this.p2 = p2;
+      this.p3 = p3;
+
+      this.time = 0;
+      this.duration = 3 + Math.random() * 2;
+      this.color = '#' + Math.floor((Math.random() * 0xffffff)).toString(16);
+
+      this.w = 8;
+      this.h = 6;
+
+      this.complete = false;
+    };
+
+    Particle.prototype = {
+      update: function () {
+        this.time = Math.min(this.duration, this.time + timeStep);
+
+        var f = Ease.outCubic(this.time, 0, 1, this.duration);
+        var p = cubeBezier(this.p0, this.p1, this.p2, this.p3, f);
+
+        var dx = p.x - this.x;
+        var dy = p.y - this.y;
+
+        this.r = Math.atan2(dy, dx) + HALF_PI;
+        this.sy = Math.sin(Math.PI * f * 10);
+        this.x = p.x;
+        this.y = p.y;
+
+        this.complete = this.time === this.duration;
+      },
+      draw: function () {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.r);
+        ctx.scale(1, this.sy);
+
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.w * 0.5, -this.h * 0.5, this.w, this.h);
+
+        ctx.restore();
+      }
+    };
+
+    Loader = function (x, y) {
+      this.x = x;
+      this.y = y;
+
+      this.r = 24;
+      this._progress = 0;
+
+      this.complete = false;
+    };
+
+    Loader.prototype = {
+      reset: function () {
+        this._progress = 0;
+        this.complete = false;
+      },
+      set progress(p) {
+        this._progress = p < 0 ? 0 : (p > 1 ? 1 : p);
+
+        this.complete = this._progress === 1;
+      },
+      get progress() {
+        return this._progress;
+      },
+      draw: function () {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.r, -HALF_PI, TWO_PI * this._progress - HALF_PI);
+        ctx.lineTo(this.x, this.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+    };
+
+    // pun intended
+    Exploader = function (x, y) {
+      this.x = x;
+      this.y = y;
+
+      this.startRadius = 24;
+
+      this.time = 0;
+      this.duration = 0.4;
+      this.progress = 0;
+
+      this.complete = false;
+    };
+
+    Exploader.prototype = {
+      reset: function () {
+        this.time = 0;
+        this.progress = 0;
+        this.complete = false;
+      },
+      update: function () {
+        this.time = Math.min(this.duration, this.time + timeStep);
+        this.progress = Ease.inBack(this.time, 0, 1, this.duration);
+
+        this.complete = this.time === this.duration;
+      },
+      draw: function () {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.startRadius * (1 - this.progress), 0, TWO_PI);
+        ctx.fill();
+      }
+    };
+
+    var particles = [],
+      loader,
+      exploader,
+      phase = 0;
+
+    function initDrawingCanvas() {
+      drawingCanvas.width = viewWidth;
+      drawingCanvas.height = viewHeight;
+      ctx = drawingCanvas.getContext('2d');
+
+      createLoader();
+      createExploader();
+      createParticles();
     }
 
-    // Redirect به صفحه اصلی
-    http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-
-func profileHandler(w http.ResponseWriter, r *http.Request) {
-    session, err := store.Get(r, "user-session")
-    if err != nil {
-        http.Error(w, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    username, ok := session.Values["username"].(string)
-    if !ok {
-        http.Redirect(w, r, "/login", http.StatusSeeOther)
-        return
+    function createLoader() {
+      loader = new Loader(viewWidth * 0.5, viewHeight * 0.5);
     }
 
-    var user User
-    result := db.Where("username = ?", username).First(&user)
-    if result.Error != nil {
-        http.Error(w, result.Error.Error(), http.StatusInternalServerError)
-        return
+    function createExploader() {
+      exploader = new Exploader(viewWidth * 0.5, viewHeight * 0.5);
     }
 
-    renderTemplate(w, "profile", user)
-}
+    function createParticles() {
+      for (var i = 0; i < 128; i++) {
+        var p0 = new Point(viewWidth * 0.5, viewHeight * 0.5);
+        var p1 = new Point(Math.random() * viewWidth, Math.random() * viewHeight);
+        var p2 = new Point(Math.random() * viewWidth, Math.random() * viewHeight);
+        var p3 = new Point(Math.random() * viewWidth, viewHeight + 64);
 
-func load_dot_env() {
-    err := godotenv.Load(".env")
-    if err != nil {
-        fmt.Println(err)
+        particles.push(new Particle(p0, p1, p2, p3));
+      }
     }
-}
 
-func sendWelcomeEmail(email, name string) {
-    mailPort, err := strconv.Atoi(os.Getenv("MAIL_PORT"))
-    if err != nil {
-        fmt.Println("Error converting MAIL_PORT to int:", err)
-        return
+    function update() {
+
+      switch (phase) {
+        case 0:
+          loader.progress += (1 / 45);
+          break;
+        case 1:
+          exploader.update();
+          break;
+        case 2:
+          particles.forEach(function (p) {
+            p.update();
+          });
+          break;
+      }
     }
-	m := gomail.NewMessage()
-	m.SetHeader("From", os.Getenv("MAIL_FROM")) 
-	m.SetHeader("To", email)
-	m.SetHeader("Subject", "Welcome to Liara Blog")
-	body := fmt.Sprintf("Dear %s,\n\nWelcome to Liara Blog! We're excited to have you on board.", name)
-	m.SetBody("text/plain", body)
 
-    d := gomail.NewDialer(os.Getenv("MAIL_HOST"), mailPort, os.Getenv("MAIL_USERNAME"), os.Getenv("MAIL_PASSWORD"))
+    function draw() {
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
 
-	if err := d.DialAndSend(m); err != nil {
-		fmt.Println("Error sending welcome email:", err)
-	}
-}
+      switch (phase) {
+        case 0:
+          loader.draw();
+          break;
+        case 1:
+          exploader.draw();
+          break;
+        case 2:
+          particles.forEach(function (p) {
+            p.draw();
+          });
+          break;
+      }
+    }
 
+    window.onload = function () {
+      initDrawingCanvas();
+      requestAnimationFrame(loop);
+    };
+
+    function loop() {
+      update();
+      draw();
+
+      if (phase === 0 && loader.complete) {
+        phase = 1;
+      }
+      else if (phase === 1 && exploader.complete) {
+        phase = 2;
+      }
+      else if (phase === 2 && checkParticlesComplete()) {
+        // reset
+        phase = 2;
+        //loader.reset();
+        exploader.reset();
+        particles.length = 0;
+        createParticles();
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    function checkParticlesComplete() {
+      for (var i = 0; i < particles.length; i++) {
+        if (particles[i].complete === false) return false;
+      }
+      return true;
+    }
+
+    // math and stuff
+
+    /**
+     * easing equations from http://gizma.com/easing/
+     * t = current time
+     * b = start value
+     * c = delta value
+     * d = duration
+     */
+    var Ease = {
+      inCubic: function (t, b, c, d) {
+        t /= d;
+        return c * t * t * t + b;
+      },
+      outCubic: function (t, b, c, d) {
+        t /= d;
+        t--;
+        return c * (t * t * t + 1) + b;
+      },
+      inOutCubic: function (t, b, c, d) {
+        t /= d / 2;
+        if (t < 1) return c / 2 * t * t * t + b;
+        t -= 2;
+        return c / 2 * (t * t * t + 2) + b;
+      },
+      inBack: function (t, b, c, d, s) {
+        s = s || 1.70158;
+        return c * (t /= d) * t * ((s + 1) * t - s) + b;
+      }
+    };
+
+    function cubeBezier(p0, c0, c1, p1, t) {
+      var p = new Point();
+      var nt = (1 - t);
+
+      p.x = nt * nt * nt * p0.x + 3 * nt * nt * t * c0.x + 3 * nt * t * t * c1.x + t * t * t * p1.x;
+      p.y = nt * nt * nt * p0.y + 3 * nt * nt * t * c0.y + 3 * nt * t * t * c1.y + t * t * t * p1.y;
+
+      return p;
+    }
+  </script>
+</body>
+</html>
+`
