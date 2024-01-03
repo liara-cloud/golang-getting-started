@@ -15,9 +15,6 @@ first steps with Golang Projects in Liara
 ```
 - or if you're using windows, just rename .env.example to .env
 - configure your environment variables
-```bash
-  mkdir static/images
-```
 - or if you're using windows, create image folder in static folder
 ```bash
   go run main.go
