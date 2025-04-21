@@ -1,4 +1,7 @@
 # golang-getting-started
+This repo is archived, please visit [Go getting started repository](https://github.com/liara-cloud/go-getting-started)
+
+
 first steps with Golang Projects in Liara
 
 ## Availabe Branches
